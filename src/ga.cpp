@@ -21,7 +21,7 @@
 //     for each child-creation step).
 // ============================================================================
 #include "ga.h"
-
+#include <omp.h>
 #include <algorithm>
 #include <limits>
 #include <numeric>
@@ -201,11 +201,10 @@ void evolve_generation(std::vector<Individual>& pop,
                        const GAConfig& cfg,
                        const std::vector<std::vector<double>>& dist_matrix,
                        std::mt19937_64& rng) {
-    // (dist_matrix is currently unused here — reserved for future extensions
-    //  such as fitness caching, local search, or in-loop re-evaluation.)
+    // (dist_matrix is unused here — reserved for future local-search hooks.)
     (void)dist_matrix;
 
-    // ---- Step 1: sort by fitness ascending ----
+    // ---- Step 1: sort by fitness ascending (sequential, O(P log P)) ----
     std::sort(pop.begin(), pop.end(),
               [](const Individual& a, const Individual& b) {
                   return a.fitness < b.fitness;
@@ -214,34 +213,60 @@ void evolve_generation(std::vector<Individual>& pop,
     const int pop_size    = cfg.population_size;
     const int elite_count = std::min(cfg.elitism_count, pop_size);
 
-    std::vector<Individual> next;
-    next.reserve(static_cast<std::size_t>(pop_size));
+    std::vector<Individual> next(static_cast<std::size_t>(pop_size));
 
-    // ---- Step 2: elitism ----
+    // ---- Step 2: elitism (tiny, keep sequential) ----
     for (int e = 0; e < elite_count; ++e) {
-        next.push_back(pop[e]);
+        next[e] = pop[e];
     }
 
-    // ---- Step 3: breed the rest ----
-    std::uniform_real_distribution<double> coin(0.0, 1.0);
+    // ---- Step 3: parallel child creation ----
+    //
+    // RNG design:
+    //   The master `rng` is only used ONCE per generation to draw a
+    //   `base_seed`. Each OpenMP thread derives its own mt19937_64 from
+    //   `base_seed + thread_id * GOLDEN_RATIO`. This gives us:
+    //     - No data races: each thread writes only to its own slice of
+    //       `next[]`, and reads only from the immutable `pop`.
+    //     - Independence: different threads explore different parts of
+    //       the search space.
+    //     - Determinism: results are reproducible given a fixed
+    //       OMP_NUM_THREADS. (Reproducibility across *different* thread
+    //       counts would require index-based seeding, which doubles the
+    //       RNG construction cost per child.)
+    //
+    // Schedule: `dynamic, 4` — child creation cost varies (a crossover
+    // loop can finish early on some inputs), so dynamic scheduling
+    // reduces the tail effect where one thread finishes last.
+    const uint64_t base_seed = rng();
 
-    while (static_cast<int>(next.size()) < pop_size) {
-        const Individual p1 = tournament_select(pop, cfg.tournament_size, rng);
-        const Individual p2 = tournament_select(pop, cfg.tournament_size, rng);
+    #pragma omp parallel
+    {
+        std::mt19937_64 local_rng(
+            base_seed +
+            static_cast<uint64_t>(omp_get_thread_num()) * 0x9E3779B97F4A7C15ULL);
 
-        Individual child;
-        child.genome.reserve(p1.genome.size());
+        std::uniform_real_distribution<double> coin(0.0, 1.0);
 
-        if (coin(rng) < cfg.crossover_rate) {
-            order_crossover(p1.genome, p2.genome, child.genome, rng);
-        } else {
-            child.genome = p1.genome;   // clone parent 1
+        #pragma omp for schedule(dynamic, 4)
+        for (int i = elite_count; i < pop_size; ++i) {
+            const Individual p1 = tournament_select(pop, cfg.tournament_size, local_rng);
+            const Individual p2 = tournament_select(pop, cfg.tournament_size, local_rng);
+
+            Individual child;
+            child.genome.reserve(p1.genome.size());
+
+            if (coin(local_rng) < cfg.crossover_rate) {
+                order_crossover(p1.genome, p2.genome, child.genome, local_rng);
+            } else {
+                child.genome = p1.genome;   // clone parent 1
+            }
+
+            swap_mutation(child.genome, cfg.mutation_rate, local_rng);
+            child.fitness = std::numeric_limits<double>::max();
+
+            next[i] = std::move(child);
         }
-
-        swap_mutation(child.genome, cfg.mutation_rate, rng);
-        child.fitness = std::numeric_limits<double>::max();  // to be evaluated
-
-        next.push_back(std::move(child));
     }
 
     // ---- Step 4: swap in ----

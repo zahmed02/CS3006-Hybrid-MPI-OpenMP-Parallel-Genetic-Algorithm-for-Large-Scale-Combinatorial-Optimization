@@ -124,18 +124,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // ---- Banner ----
-    if (opts.verbose && info.rank == 0) {
-        std::cout << "=== Parallel GA for TSP ===\n"
-                  << "MPI ranks:         " << info.size << "\n"
-                  << "OpenMP threads:    " << omp_get_max_threads() << "\n"
-                  << "Cities:            " << opts.num_cities << "\n"
-                  << "Generations:       " << opts.generations << "\n"
-                  << "Global pop:        " << opts.pop_size << "\n"
-                  << "Data path:         " << opts.data_path << "\n"
-                  << "Trace CSV:         " << opts.out_csv << "\n";
-    }
-
     // ---- Load or generate coordinates ----
     std::vector<std::pair<double, double>> coords;
     try {
@@ -151,6 +139,18 @@ int main(int argc, char** argv) {
     }
 
     const int N = static_cast<int>(coords.size());
+
+        // ---- Banner (now that N is known) ----
+    if (opts.verbose && info.rank == 0) {
+        std::cout << "=== Parallel GA for TSP ===\n"
+                  << "MPI ranks:         " << info.size << "\n"
+                  << "OpenMP threads:    " << omp_get_max_threads() << "\n"
+                  << "Cities (N):        " << N << "\n"
+                  << "Generations:       " << opts.generations << "\n"
+                  << "Global pop:        " << opts.pop_size << "\n"
+                  << "Data path:         " << opts.data_path << "\n"
+                  << "Trace CSV:         " << opts.out_csv << "\n";
+    }
 
     // ---- Build distance matrix (OpenMP-parallel within each rank) ----
     pdc::Timer t_build;

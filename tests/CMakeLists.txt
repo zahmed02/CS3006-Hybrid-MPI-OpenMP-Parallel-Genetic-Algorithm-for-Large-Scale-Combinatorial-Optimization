@@ -2,8 +2,14 @@
 # Unit tests and standalone harnesses
 # ============================================================================
 
-# ---- Basic placeholder test ----
-add_executable(pdc_tests test_ga.cpp)
+# ---- Basic unit tests ----
+# The test file calls functions defined in src/ga.cpp and src/fitness.cpp,
+# so those translation units must be compiled into the test executable.
+add_executable(pdc_tests
+    test_ga.cpp
+    ${CMAKE_SOURCE_DIR}/src/ga.cpp
+    ${CMAKE_SOURCE_DIR}/src/fitness.cpp
+)
 target_include_directories(pdc_tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(pdc_tests PRIVATE MPI::MPI_CXX OpenMP::OpenMP_CXX)
 add_test(NAME basic COMMAND pdc_tests)

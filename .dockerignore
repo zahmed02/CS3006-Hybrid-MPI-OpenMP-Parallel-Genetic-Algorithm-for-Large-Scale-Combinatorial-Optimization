@@ -1,0 +1,35 @@
+# ---- Build artifacts ----
+build/
+*.o
+*.obj
+*.a
+*.so
+
+# ---- Editor / IDE ----
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---- Git ----
+.git/
+.gitignore
+
+# ---- Generated data ----
+data/
+results/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ---- Docs (not needed for build) ----
+docs/
+*.pdf
+*.docx
+*.pptx
+
+# ---- OS junk ----
+.DS_Store

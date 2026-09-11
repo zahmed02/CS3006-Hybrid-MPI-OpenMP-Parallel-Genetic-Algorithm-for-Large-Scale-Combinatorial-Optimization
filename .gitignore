@@ -18,6 +18,8 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.ipynb_checkpoints/          # ← NEW
+*.egg-info/                  # ← NEW
 
 # ---- Generated data ----
 data/raw/*.txt
@@ -30,3 +32,4 @@ results/plots/*.png
 
 # ---- Misc ----
 .DS_Store
+Thumbs.db                    # ← NEW (Windows)

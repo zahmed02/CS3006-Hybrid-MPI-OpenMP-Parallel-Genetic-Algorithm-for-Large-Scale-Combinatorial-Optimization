@@ -1,0 +1,5 @@
+# Unit tests (GoogleTest will be integrated later)
+add_executable(pdc_tests test_ga.cpp)
+target_include_directories(pdc_tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(pdc_tests PRIVATE MPI::MPI_CXX OpenMP::OpenMP_CXX)
+add_test(NAME basic COMMAND pdc_tests)

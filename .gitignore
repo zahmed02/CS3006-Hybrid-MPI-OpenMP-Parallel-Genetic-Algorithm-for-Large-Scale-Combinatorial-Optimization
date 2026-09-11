@@ -1,0 +1,32 @@
+# ---- Build artifacts ----
+build/
+*.o
+*.obj
+*.a
+*.so
+*.out
+*.exe
+
+# ---- Editor / IDE ----
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ---- Generated data ----
+data/raw/*.txt
+data/processed/*.txt
+
+# ---- Results ----
+results/logs/*.log
+results/benchmarks/*.csv
+results/plots/*.png
+
+# ---- Misc ----
+.DS_Store

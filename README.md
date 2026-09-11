@@ -1,4 +1,4 @@
-# CS3006 — Hybrid MPI+OpenMP Parallel Genetic Algorithm
+# CS3006 Hybrid MPI OpenMP Parallel Genetic Algorithm for Large Scale Combinatorial Optimization
 
 [![Language](https://img.shields.io/badge/language-C%2B%2B17-blue)](https://en.cppreference.com/w/cpp/17)
 [![Parallel](https://img.shields.io/badge/parallel-MPI%20%2B%20OpenMP-orange)](https://www.open-mpi.org/)
@@ -29,10 +29,10 @@ Tested on N=5000 cities, population 1000, 200 generations.
 
 ### Key findings
 
-1. **MPI outperforms OpenMP at equal core counts** — each MPI rank holds a *private* copy of the distance matrix, spreading the working set across cache regions. OpenMP threads contend for the same shared matrix and saturate the memory bus.
-2. **Hybrid wins overall** — combining 2 MPI ranks with 2 OpenMP threads per rank delivers the best of both worlds.
-3. **Sub-linear scaling beyond 2 cores** — the WSL2 host's 4 logical cores are likely 2 physical + SMT, and the workload is memory-bandwidth-bound.
-4. **Island-model migration improves solution quality** — the best 2-rank run found a tour ~1.5% shorter than the single-rank run, demonstrating that parallelization isn't only about speed.
+1. **MPI outperforms OpenMP at equal core counts**: each MPI rank holds a *private* copy of the distance matrix, spreading the working set across cache regions. OpenMP threads contend for the same shared matrix and saturate the memory bus.
+2. **Hybrid wins overall**: combining 2 MPI ranks with 2 OpenMP threads per rank delivers the best of both worlds.
+3. **Sub-linear scaling beyond 2 cores**: the WSL2 host's 4 logical cores are likely 2 physical + SMT, and the workload is memory-bandwidth-bound.
+4. **Island-model migration improves solution quality**: the best 2-rank run found a tour ~1.5% shorter than the single-rank run, demonstrating that parallelization isn't only about speed.
 
 ---
 
@@ -62,10 +62,10 @@ Tested on N=5000 cities, population 1000, 200 generations.
 ```
 
 **Per generation:**
-1. `evolve_generation()` — selection, OX1 crossover, swap mutation, elitism (OpenMP-parallel child creation)
-2. `evaluate_population()` — tour length computation (OpenMP-parallel)
-3. Every `migration_interval` generations — ring migration via `MPI_Sendrecv`
-4. At log boundaries — `MPI_Allreduce` + `MPI_Bcast` for global best
+1. `evolve_generation()`: selection, OX1 crossover, swap mutation, elitism (OpenMP-parallel child creation)
+2. `evaluate_population()`: tour length computation (OpenMP-parallel)
+3. Every `migration_interval` generations: ring migration via `MPI_Sendrecv`
+4. At log boundaries: `MPI_Allreduce` + `MPI_Bcast` for global best
 
 ---
 
@@ -156,4 +156,4 @@ Both print the same value to 9+ decimal places.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT see [LICENSE](LICENSE).

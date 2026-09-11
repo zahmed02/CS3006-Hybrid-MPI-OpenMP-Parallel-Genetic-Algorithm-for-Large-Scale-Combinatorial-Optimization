@@ -237,11 +237,10 @@ int main(int argc, char** argv) {
             pdc::migrate_ring(pop, info, cfg.num_migrants);
         }
 
-        // 5. Reduce to global best across all ranks
-        best_global = pdc::global_best(best_local, info);
-
-        // 6. Periodic logging
+        // 5. Periodic logging (and the only place global_best() is called)
         if ((gen % log_every == 0) || gen == opts.generations) {
+            best_global = pdc::global_best(best_local, info);
+
             const double elapsed = t_loop.elapsed_seconds();
 
             if (info.rank == 0) {
@@ -263,6 +262,9 @@ int main(int argc, char** argv) {
             }
         }
     }
+
+    // ---- Final sync: ensure rank 0 has the true global best ----
+    best_global = pdc::global_best(best_local, info);
 
     const double loop_time = t_loop.elapsed_seconds();
 

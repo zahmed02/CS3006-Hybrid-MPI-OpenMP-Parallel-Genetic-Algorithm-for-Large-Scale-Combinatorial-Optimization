@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
-# ============================================================================
-# Benchmark runner: sweeps MPI ranks × OpenMP threads
-# Produces results/benchmarks/speedup.csv with timing/speedup/efficiency
-#
-# The baseline is 1 rank × 1 thread (sequential). All other configs are
-# measured against it. Repeats take the MIN time (fastest) of each config
-# to reduce noise from scheduler jitter.
-# ============================================================================
+# Run a benchmark sweep over MPI ranks x OpenMP threads.
+# Writes results/benchmarks/speedup.csv.
+# Baseline is 1 rank x 1 thread; all other configs are measured against it.
+# With REPEATS > 1, keeps the fastest time of each config to reduce noise.
 set -euo pipefail
 
 BIN="${BIN:-./build/bin/pdc_ga}"
@@ -20,7 +16,7 @@ REPEATS="${REPEATS:-1}"
 mkdir -p "$LOG_DIR" "$(dirname "$OUT")"
 echo "cores,ranks,threads,run,time_sec,speedup,efficiency" > "$OUT"
 
-# ---- Sanity checks ----
+# Sanity checks
 if [[ ! -x "$BIN" ]]; then
     echo "Error: $BIN not found or not executable. Build first." >&2
     exit 1
@@ -30,7 +26,7 @@ if [[ ! -f "$DATA" ]]; then
     exit 1
 fi
 
-# Configuration sweep: each entry is "ranks threads"
+# Each entry is "ranks threads"
 CONFIGS=(
     "1 1"
     "2 1"
@@ -49,11 +45,11 @@ echo "Repeats:      $REPEATS"
 echo "Results:      $OUT"
 echo
 
-# ---- Baseline: 1 rank × 1 thread ----
+# Baseline: 1 rank x 1 thread
 BASE_TIME=""
 for run in $(seq 1 "$REPEATS"); do
     LOG="$LOG_DIR/base_r1_t1_run${run}.log"
-    echo "[baseline] 1 rank × 1 thread — run $run"
+    echo "[baseline] 1 rank x 1 thread - run $run"
     OMP_NUM_THREADS=1 mpirun -np 1 --oversubscribe "$BIN" \
         --data "$DATA" --generations "$GENS" --pop "$POP" --quiet \
         > "$LOG" 2>&1
@@ -66,18 +62,19 @@ echo "baseline_loop_time=$BASE_TIME"
 echo "1,1,1,0,$BASE_TIME,1.000000,1.000000" >> "$OUT"
 echo
 
-# ---- Sweep the rest ----
+# Sweep the remaining configs
 for cfg in "${CONFIGS[@]}"; do
     read -r RANKS THREADS <<< "$cfg"
+    # Skip the baseline (already run)
     if [[ "$RANKS" -eq 1 && "$THREADS" -eq 1 ]]; then
-        continue   # already done as baseline
+        continue
     fi
     CORES=$((RANKS * THREADS))
 
     BEST_TIME=""
     for run in $(seq 1 "$REPEATS"); do
         LOG="$LOG_DIR/r${RANKS}_t${THREADS}_run${run}.log"
-        echo "[sweep] $RANKS rank(s) × $THREADS thread(s) — run $run"
+        echo "[sweep] $RANKS rank(s) x $THREADS thread(s) - run $run"
         OMP_NUM_THREADS="$THREADS" mpirun -np "$RANKS" --oversubscribe "$BIN" \
             --data "$DATA" --generations "$GENS" --pop "$POP" --quiet \
             > "$LOG" 2>&1

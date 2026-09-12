@@ -1,32 +1,32 @@
-// ============================================================================
-// utils.h — Timing, logging, CSV output helpers
-// ============================================================================
+// Timing, logging, and CSV output helpers
 #pragma once
 
 #include <chrono>
 #include <string>
 
+using namespace std;
+
 namespace pdc {
 
-// Simple monotonic timer
+// Simple stopwatch
 class Timer {
 public:
     void   start();
     double elapsed_seconds() const;
 
 private:
-    std::chrono::high_resolution_clock::time_point t0_;
+    chrono::high_resolution_clock::time_point t0_;
 };
 
-// Ensure a directory exists (creates parents if needed)
-void ensure_directory(const std::string& path);
+// Create a directory (and its parents) if it doesn't exist
+void ensure_directory(const string& path);
 
-// Append a CSV row; writes header on first creation
-void append_csv_row(const std::string& path,
-                    const std::string& header_if_new,
-                    const std::string& row);
+// Append a row to a CSV file; writes a header if the file is new
+void append_csv_row(const string& path,
+                    const string& header_if_new,
+                    const string& row);
 
-// Print a message only from rank 0
-void log_rank0(const std::string& msg);
+// Print a message only from MPI rank 0
+void log_rank0(const string& msg);
 
-}  // namespace pdc
+}

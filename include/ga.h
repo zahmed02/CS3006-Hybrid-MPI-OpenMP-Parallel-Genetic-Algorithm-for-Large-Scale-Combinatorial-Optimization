@@ -1,22 +1,24 @@
-// ============================================================================
-// ga.h — Core Genetic Algorithm data structures and operators
-// ============================================================================
+// Core Genetic Algorithm data structures and operators
 #pragma once
 
 #include <cstdint>
 #include <random>
 #include <vector>
 
+using namespace std;
+
 namespace pdc {
 
 // A TSP tour is a permutation of city indices
-using Genome = std::vector<int>;
+using Genome = vector<int>;
 
+// One candidate solution with its fitness (tour length; lower is better)
 struct Individual {
     Genome genome;
-    double fitness = 0.0;   // lower = better for TSP (tour length)
+    double fitness = 0.0;
 };
 
+// Tunable GA settings
 struct GAConfig {
     int      population_size    = 1000;
     int      num_generations    = 500;
@@ -29,37 +31,29 @@ struct GAConfig {
     uint64_t seed               = 42;
 };
 
-// ---- GA Operators ----
+// Fill pop with random permutations of [0, num_cities)
+void initialize_population(vector<Individual>& pop, int num_cities, mt19937_64& rng);
 
-// Fill `pop` with random permutations of [0, num_cities)
-void initialize_population(std::vector<Individual>& pop,
-                           int num_cities,
-                           std::mt19937_64& rng);
+// Compute fitness for every individual (OpenMP-parallel)
+void evaluate_population(vector<Individual>& pop,
+                         const vector<vector<double>>& dist_matrix);
 
-// Compute fitness (tour length) for every individual — parallelized with OpenMP
-void evaluate_population(std::vector<Individual>& pop,
-                         const std::vector<std::vector<double>>& dist_matrix);
-
-// Pick the best of `tournament_size` random individuals
-Individual tournament_select(const std::vector<Individual>& pop,
+// Return the best of tournament_size random individuals
+Individual tournament_select(const vector<Individual>& pop,
                              int tournament_size,
-                             std::mt19937_64& rng);
+                             mt19937_64& rng);
 
-// Order Crossover (OX1) — preserves permutation validity
-void order_crossover(const Genome& p1,
-                     const Genome& p2,
-                     Genome& child,
-                     std::mt19937_64& rng);
+// Order Crossover (OX1): keeps the child a valid permutation
+void order_crossover(const Genome& p1, const Genome& p2,
+                     Genome& child, mt19937_64& rng);
 
-// Swap mutation — swap two random positions
-void swap_mutation(Genome& genome,
-                   double mutation_rate,
-                   std::mt19937_64& rng);
+// Swap mutation: swap two random positions with the given probability
+void swap_mutation(Genome& genome, double mutation_rate, mt19937_64& rng);
 
-// Run one generation: selection -> crossover -> mutation -> elitism
-void evolve_generation(std::vector<Individual>& pop,
+// One generation: sort, elitism, selection, crossover, mutation
+void evolve_generation(vector<Individual>& pop,
                        const GAConfig& cfg,
-                       const std::vector<std::vector<double>>& dist_matrix,
-                       std::mt19937_64& rng);
+                       const vector<vector<double>>& dist_matrix,
+                       mt19937_64& rng);
 
-}  // namespace pdc
+}

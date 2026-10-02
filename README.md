@@ -1,5 +1,9 @@
 # CS3006 Hybrid MPI OpenMP Parallel Genetic Algorithm for Large Scale Combinatorial Optimization
 
+# CS3006 Parallel & Distributed Computing
+
+# Instructor: Sir Zulfiqar Ali
+
 An island-model **Genetic Algorithm** for the **Traveling Salesman Problem**, implemented in modern C++17 with **hybrid MPI + OpenMP** parallelism.
 
 The project distributes a global population across MPI ranks using a coarse-grained island model, and parallelizes both fitness evaluation and child creation within each rank using OpenMP threads. MPI ranks periodically exchange their best individuals through a ring-topology migration to preserve diversity and share search progress. The result is a parallel evolutionary optimizer designed to run efficiently on a multi-core CPU while improving solution quality relative to a single-rank baseline.

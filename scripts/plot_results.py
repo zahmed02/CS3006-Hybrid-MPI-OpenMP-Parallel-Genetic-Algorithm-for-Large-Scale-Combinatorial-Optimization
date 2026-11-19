@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Plot speedup and efficiency from results/benchmarks/speedup.csv.
 
-Left panel:  speedup vs cores, split by strategy
-Right panel: efficiency vs cores, split by strategy
+Left panel:   speedup vs cores, split by strategy
+Middle panel: efficiency vs cores, split by strategy
+Right panel:  final tour length per configuration (only if the CSV has a
+              best_length column) - speedup is only meaningful next to quality
 
 Strategies are inferred from (ranks, threads):
   MPI-only    : ranks > 1, threads == 1
@@ -40,7 +42,10 @@ def main():
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5))
+    has_quality = "best_length" in df.columns
+    ncols = 3 if has_quality else 2
+    fig, axes = plt.subplots(1, ncols, figsize=(7 * ncols, 5.5))
+    ax1, ax2 = axes[0], axes[1]
 
     # Marker and color for each strategy
     style = {
@@ -94,6 +99,19 @@ def main():
     ax2.legend(fontsize=9, loc="lower left")
     ax2.set_xticks(sorted(df["cores"].unique()))
 
+    # Right: solution quality of the best run of every configuration
+    if has_quality:
+        ax3 = axes[2]
+        labels = [f"{int(r)}x{int(t)}" for r, t in zip(df["ranks"], df["threads"])]
+        ax3.bar(labels, df["best_length"], color="#6a8caf")
+        lo, hi = df["best_length"].min(), df["best_length"].max()
+        pad = max((hi - lo) * 0.5, 0.01 * hi)
+        ax3.set_ylim(lo - pad, hi + pad)
+        ax3.set_xlabel("Ranks x threads")
+        ax3.set_ylabel("Best tour length (lower is better)")
+        ax3.set_title("Solution quality")
+        ax3.grid(True, axis="y", alpha=0.3)
+
     plt.suptitle("Hybrid MPI+OpenMP GA - TSP Performance", fontsize=14, fontweight="bold", y=1.02)
     plt.tight_layout()
     plt.savefig(args.out, dpi=150, bbox_inches="tight")
@@ -102,6 +120,8 @@ def main():
     # Print a summary table
     print("\n=== Summary Table ===")
     cols = ["cores", "ranks", "threads", "time_sec", "speedup", "efficiency", "strategy"]
+    if has_quality:
+        cols.insert(4, "best_length")
     print(df[cols].to_string(index=False))
 
 

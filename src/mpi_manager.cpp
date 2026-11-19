@@ -9,8 +9,15 @@ using namespace std;
 
 namespace pdc {
 
+namespace {
+bool better(const Individual& a, const Individual& b) {
+    return a.fitness < b.fitness;
+}
+}  // namespace
+
 // Exchange the best num_migrants individuals with the next and previous
-// rank in a ring. Uses MPI_Sendrecv for both genome and fitness payloads.
+// rank in a ring (MPI_Sendrecv, so no deadlock for any ring size).
+// The incoming migrants replace the worst individuals of the local island.
 void migrate_ring(vector<Individual>& local_pop,
                   const MPIInfo& info,
                   int num_migrants) {
@@ -19,20 +26,18 @@ void migrate_ring(vector<Individual>& local_pop,
     if (local_pop.empty()) return;
 
     const int pop_size = static_cast<int>(local_pop.size());
-    if (num_migrants > pop_size) num_migrants = pop_size;
+
+    // The best m and the worst m must not overlap
+    num_migrants = min(num_migrants, pop_size / 2);
+    if (num_migrants <= 0) return;
 
     const int next_rank = (info.rank + 1) % info.size;
     const int prev_rank = (info.rank - 1 + info.size) % info.size;
     const int N = static_cast<int>(local_pop[0].genome.size());
 
-    // Bring the best num_migrants to the front
-    partial_sort(
-        local_pop.begin(),
-        local_pop.begin() + num_migrants,
-        local_pop.end(),
-        [](const Individual& a, const Individual& b) {
-            return a.fitness < b.fitness;
-        });
+    // Best num_migrants to the front (only that prefix is ordered)
+    partial_sort(local_pop.begin(), local_pop.begin() + num_migrants,
+                 local_pop.end(), better);
 
     // Pack send buffers
     vector<int>    send_genome(static_cast<size_t>(num_migrants) * N);
@@ -48,7 +53,7 @@ void migrate_ring(vector<Individual>& local_pop,
     vector<int>    recv_genome(static_cast<size_t>(num_migrants) * N);
     vector<double> recv_fit(static_cast<size_t>(num_migrants));
 
-    // Two Sendrecv calls: genome ints (tag 100) and fitness doubles (tag 101)
+    // Genome ints (tag 100), then fitness doubles (tag 101)
     MPI_Sendrecv(send_genome.data(), num_migrants * N, MPI_INT,
                  next_rank, 100,
                  recv_genome.data(), num_migrants * N, MPI_INT,
@@ -61,13 +66,11 @@ void migrate_ring(vector<Individual>& local_pop,
                  prev_rank, 101,
                  MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-    // Sort so we can find the worst individuals at the tail
-    sort(local_pop.begin(), local_pop.end(),
-         [](const Individual& a, const Individual& b) {
-             return a.fitness < b.fitness;
-         });
+    // Put the num_migrants worst individuals at the tail (no full sort needed)
+    nth_element(local_pop.begin() + num_migrants,
+                local_pop.end() - num_migrants,
+                local_pop.end(), better);
 
-    // Replace the worst num_migrants with the received ones
     for (int k = 0; k < num_migrants; ++k) {
         Individual& victim = local_pop[pop_size - 1 - k];
         const size_t offset = static_cast<size_t>(k) * N;
@@ -78,7 +81,7 @@ void migrate_ring(vector<Individual>& local_pop,
 }
 
 // Return the best individual across all ranks (same result on every rank).
-// Uses MPI_Allreduce with MINLOC to find the winner, then broadcasts it.
+// MPI_Allreduce with MINLOC finds the winner, then it broadcasts its tour.
 Individual global_best(const Individual& local_best, const MPIInfo& info) {
     if (info.size < 2) return local_best;
 
@@ -110,4 +113,4 @@ Individual global_best(const Individual& local_best, const MPIInfo& info) {
     return result;
 }
 
-}
+}  // namespace pdc
